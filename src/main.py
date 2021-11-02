@@ -1,4 +1,4 @@
-#!../../env/bin/python3
+#!../env/bin/python3
 import sys
 from tkinter.constants import NONE
 import pdb
