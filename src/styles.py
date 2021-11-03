@@ -13,4 +13,5 @@ inputTextStyle = """
 font-size : 18px;
 font-family : "Fira Code", Monaco, monospace;
 padding : 10px;
+margin : 4px;
 """

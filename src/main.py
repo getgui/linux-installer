@@ -1,16 +1,18 @@
 #!../env/bin/python3
 import sys
-from tkinter.constants import NONE
 import pdb
 import styles
+from pkglib.GGProgressBar import ProgressBarIndeterminate
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QStackedWidget,
-    QLabel,QLineEdit,
+    QLabel,
+    QLineEdit,
     QPushButton,
     QApplication,
-    # QProgressBar,
-    QWidget, QGridLayout,
+    QWidget,
+    QGridLayout,
 )
 
 # Base class from which all other windows inherit
@@ -28,9 +30,9 @@ class Window(object):
     def addPage(self, page):
         self.pageStack.addWidget(page)
         self.pageInfo.update({page.getName(): self.pageStackSize})
-        self.pageStackSize += 1 
+        self.pageStackSize += 1
 
-    def gotoPage(self, pageName : str, data=None):
+    def gotoPage(self, pageName: str, data=None):
         # data is a dict of data to be passed to the page from the previous page
         self.pageStack.widget(self.pageInfo[pageName]).update(data)
         self.pageStack.setCurrentIndex(self.pageInfo[pageName])
@@ -47,6 +49,7 @@ class Window(object):
     def run(self):
         sys.exit(self.app.exec())
 
+
 # MainWindow is actual window in the application that is created
 # and displayed.
 class MainWindow(Window):
@@ -54,6 +57,7 @@ class MainWindow(Window):
         args = [] if args is None else args
         self.app = QApplication(args)
         Window.__init__(self, name, self.app)
+
 
 # Page is the base class that all pages inherit from.
 # It can be added to the window's page stack.
@@ -70,7 +74,7 @@ class Page(QWidget):
     def configure(self):
         # configure page specific stuff i.e. buttons, labels, etc.
         raise NotImplementedError("configure method not implemented")
-    
+
     def update(self, data=None):
         # implement update method to update page with data from previous page
         if data is not None:
@@ -91,7 +95,7 @@ class MainPage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
         self.configure()
-    
+
     def configure(self):
         self.layout = QGridLayout()
         self.layout.cellRect(4, 2)
@@ -112,20 +116,24 @@ class MainPage(Page):
         self.layout.addWidget(repoInputBox, 1, 0, 1, 2)
 
         # Add progress bar
-        # progressBar = self.addPageWidget("pbar", QProgressBar())
-        # progressBar.setValue(10)
-        # self.layout.addWidget(progressBar, 3, 0)
+        progressBar = self.addPageWidget("pbar", ProgressBarIndeterminate())
+        self.layout.addWidget(progressBar, 1, 0, 1, 2, Qt.AlignBottom)
+        progressBar.setFixedHeight(4)
+        progressBar.setMargin([5, 0, 10, 0])
+        progressBar.setVisible(False)
 
         # Add Verify button button
-        button = self.addPageWidget('verifyButton', QPushButton("Verify"))
+        button = self.addPageWidget("verifyButton", QPushButton("Verify"))
+        button.clicked.connect(lambda: progressBar.setState(True))
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 3, 1)
         self.setLayout(self.layout)
         self.show()
-    
+
     def update(self, data=None):
         print("Updated : " + str(self.getName()))
-        self.getPageWidget("verifyButton").setText(data['text'])
+        self.getPageWidget("verifyButton").setText(data["text"])
+
 
 if __name__ == "__main__":
     app = MainWindow("Linux Installer", sys.argv)
