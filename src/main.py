@@ -4,13 +4,16 @@ import pdb
 import styles
 from pkglib.GGProgressBar import ProgressBarIndeterminate
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QThread, Qt, Signal, SignalInstance
 from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
     QGridLayout,
 )
+
+from pkglib.AsyncTask import AsyncTask
+from helpers import fetchRepo
 from pkglib.GUIMain import Page, Window, MainWindow
 
 
@@ -33,10 +36,11 @@ class MainPage(Page):
         self.layout.addWidget(titleLabel, 0, 0)
 
         # Add Git repo input field
-        repoInputBox = QLineEdit()
+        repoInputBox = self.addPageWidget("repoInputBox", QLineEdit())
         repoInputBox.setPlaceholderText("Git Repo (i.e. getgui/linux-installer)")
         repoInputBox.setStyleSheet(styles.inputTextStyle)
         self.layout.addWidget(repoInputBox, 1, 0, 1, 2)
+        repoInputBox.setText("getgui/download-ram")
 
         # Add progress bar
         progressBar = self.addPageWidget("pbar", ProgressBarIndeterminate())
@@ -47,15 +51,35 @@ class MainPage(Page):
 
         # Add Verify button button
         button = self.addPageWidget("verifyButton", QPushButton("Verify"))
-        button.clicked.connect(lambda: progressBar.setState(True))
+        button.clicked.connect(lambda: self.verifyRepo())
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 3, 1)
         self.setLayout(self.layout)
         self.show()
 
-    def update(self, data=None):
-        print("Updated : " + str(self.getName()))
-        self.getPageWidget("verifyButton").setText(data["text"])
+    def verifyRepo(self):
+        self.getPageWidget("pbar").setState(True)
+        print("Verifying")
+        def finish(result):
+            if result['result' ]:
+                verifyButton = self.getPageWidget("verifyButton")
+                verifyButton.setText("Install")
+                self.counter = 1
+                print("Reassigned")
+                verifyButton.clicked.disconnect()
+                verifyButton.clicked.connect(lambda: self.installRepo())
+                verifyButton.setStyleSheet(styles.installButtonStyle)
+            self.getPageWidget("pbar").setState(False)
+            # self.task = None
+            
+        # assign to a variable to avoid garbage collection
+        repoName = self.getPageWidget("repoInputBox").text()
+        self.task = AsyncTask(finish, lambda: fetchRepo(repoName))
+
+    def installRepo(self):
+        self.getPageWidget("pbar").setState(True)
+        self.getPageWidget("verifyButton").setText("Installing...")
+        # self.task = None
 
 
 if __name__ == "__main__":
