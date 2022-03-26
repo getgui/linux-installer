@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget, QApplication
+from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QLinearGradient, QPainter, QColor, QBrush, QPaintEvent
 from PySide6.QtCore import QRect, QTimer
 
@@ -40,6 +40,7 @@ class ProgressBarIndeterminate(QWidget):
         else:
             self.timer.stop()
             self.update()
+        self.setVisible(self.state)
 
     # sets bounce property if true, the progress bar will bounce back and forth
     # it is false by default
