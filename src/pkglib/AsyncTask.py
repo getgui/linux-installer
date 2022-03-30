@@ -25,6 +25,10 @@ class AsyncTask(object):
         self.worker_thread.start()
 
     def taskDone(self, result):
-        self.finishTask(result)
-        self.worker_thread.quit()
-        self.worker_thread.wait()
+        try:
+            self.finishTask(result)
+        except Exception as e:
+            raise e
+        finally:
+            self.worker_thread.quit()
+            self.worker_thread.wait()
