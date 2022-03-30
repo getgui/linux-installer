@@ -18,3 +18,11 @@ RequiresClone: False
 4. Checks if it requires repo cloning and clone.
 5. Run the install script.
 
+## Latest State
+
+First Screen (before verification)
+
+![UI First screen](src/assets/ui_1.png "First Screen")
+
+Second Screen (after application verification)
+![UI Second screen](src/assets/ui_2.png "Second Screen")
