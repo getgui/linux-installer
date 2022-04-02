@@ -26,3 +26,6 @@ First Screen (before verification)
 
 Second Screen (after application verification)
 ![UI Second screen](src/assets/ui_2.png "Second Screen")
+
+Third Screen (verification failed)
+![UI Third screen](src/assets/ui_3.png "Third Screen")
