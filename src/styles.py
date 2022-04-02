@@ -12,6 +12,7 @@ backgroundColor = "#fafafa"
 textColor = "#212121"
 textColorLight = "#757575"
 textColorDark = "#ffffff"
+warningColorLight = "#ffb300"
 
 buttonStyle = f"""
 font-size: 15px;
@@ -52,7 +53,13 @@ border-color : {accentColorLight};
 color : {primaryColor};
 """
 
-errorTextStyle = """
+errorTextStyle = f"""
 font-size : 15px;
-color : red;
+color : {warningColorLight};
+"""
+errorIconStyle = f"""
+font-size : 25px;
+font-family: codicon;
+color : {warningColorLight};
+margin-left: 5px;
 """

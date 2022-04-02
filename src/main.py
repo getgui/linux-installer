@@ -1,40 +1,66 @@
 #!../env/bin/python3
 import sys
+import os
 import yaml
 import styles
 from pkglib.GGProgressBar import ProgressBarIndeterminate
 
-from PySide6.QtCore import  Qt
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGridLayout, QScrollArea, QSizePolicy
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QGridLayout,
+    QScrollArea,
+    QHBoxLayout,
+)
+from PySide6.QtGui import QImage, QPixmap, QFontDatabase
 
+import enum
 from pkglib.AsyncTask import AsyncTask
 from helpers import fetchRepo, fetchImage
 from pkglib.GUIMain import Page, Window, MainWindow
 
 
+class VerifyState(enum.Enum):
+    VERIFIED = 0
+    UNVERIFIED = 1
+
+ROOT=os.getcwd()
 class MainPage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
         self.repoName = ""
         self.configure()
 
-    def resetVerifyButton(self, state="unverified"):
+    def resetVerifyButton(self, state: VerifyState):
         # TODO: Make state an Enum
-        if state == "verified":
+        if state == VerifyState.VERIFIED:
             self.getPageWidget("verifyButton").setText("Install")
             self.getPageWidget("verifyButton").setStyleSheet(styles.installButtonStyle)
             self.getPageWidget("verifyButton").clicked.disconnect()
             self.getPageWidget("verifyButton").clicked.connect(
                 lambda: self.installRepo()
             )
-        elif state == "unverified":
+        elif state == VerifyState.UNVERIFIED:
             self.getPageWidget("verifyButton").setText("Verify")
             self.getPageWidget("verifyButton").setStyleSheet(styles.buttonStyle)
             self.getPageWidget("verifyButton").clicked.disconnect()
             self.getPageWidget("verifyButton").clicked.connect(
                 lambda: self.verifyRepo()
             )
+
+    def displayMessage(self, message=None):
+        messageBox = self.getPageWidget("messageBox")
+        messageIcon = self.getPageWidget("messageIcon")
+        if message:
+            messageBox.setText(message)
+            messageBox.setStyleSheet(styles.errorTextStyle)
+            messageIcon.setStyleSheet(styles.errorIconStyle)
+            messageIcon.setText("\uEA6C")
+        else:
+            messageBox.setText("")
+            messageIcon.setText("")
 
     def displayRepoInfo(self, data=None, hide=False):
         repoLayout = self.getPageWidget("repoInfoContainer")
@@ -66,7 +92,7 @@ class MainPage(Page):
                 appImage.loadFromData(remoteImage)
             else:
                 appImage.load("./src/assets/octocat.png")
-                
+
             imageLabel = QLabel()
             pixMap = QPixmap.fromImage(appImage.scaledToHeight(75))
             imageLabel.setPixmap(pixMap)
@@ -82,8 +108,8 @@ class MainPage(Page):
     def repoTextChanged(self):
         self.repoName = self.getPageWidget("repoInputBox").text()
         self.displayRepoInfo(self, hide=True)
-        self.resetVerifyButton("unverified")
-        self.getPageWidget("messageBox").setText("")
+        self.resetVerifyButton(VerifyState.UNVERIFIED)
+        self.displayMessage(None)
 
     def configure(self):
         self.layout = QGridLayout()
@@ -132,9 +158,11 @@ class MainPage(Page):
         self.layout.addWidget(button, 4, 1)
 
         # Add message box (for error messages)
-        messageBox = self.addPageWidget("messageBox", QLabel())
-        messageBox.setStyleSheet(styles.errorTextStyle)
-        self.layout.addWidget(messageBox, 4, 0)
+        messageContainer = QHBoxLayout()
+        messageContainer.addWidget(self.addPageWidget("messageIcon", QLabel()))
+        messageContainer.addWidget(self.addPageWidget("messageBox", QLabel()))
+        messageContainer.insertStretch(2,1)
+        self.layout.addLayout(messageContainer, 4, 0)
 
         self.setLayout(self.layout)
         self.show()
@@ -145,10 +173,10 @@ class MainPage(Page):
 
         def finish(result):
             if result["result"]:
-                self.resetVerifyButton("verified")
+                self.resetVerifyButton(VerifyState.VERIFIED)
                 self.displayRepoInfo(result["content"])
             else:
-                self.getPageWidget("messageBox").setText("Unsupported repository")
+                self.displayMessage(f"Unsupported Repository {self.repoName}")
             self.getPageWidget("pbar").setState(False)
 
         self.task = AsyncTask(finish, lambda: fetchRepo(self.repoName))
@@ -160,6 +188,7 @@ class MainPage(Page):
 
 if __name__ == "__main__":
     app = MainWindow("Linux Installer", sys.argv)
+    print( QFontDatabase.addApplicationFont(ROOT + "/src/assets/codicon.ttf") )
     app.addPage(MainPage("home", app))
     app.show()
     # Create and show the form
