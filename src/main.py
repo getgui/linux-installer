@@ -4,8 +4,8 @@ import yaml
 import styles
 from pkglib.GGProgressBar import ProgressBarIndeterminate
 
-from PySide6.QtCore import QThread, Qt, Signal, SignalInstance
-from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGridLayout, QSizePolicy
+from PySide6.QtCore import  Qt
+from PySide6.QtWidgets import QLabel, QLineEdit, QPushButton, QGridLayout, QScrollArea, QSizePolicy
 from PySide6.QtGui import QImage, QPixmap
 
 from pkglib.AsyncTask import AsyncTask
@@ -47,9 +47,16 @@ class MainPage(Page):
             repoAuthor = QLabel(f"{content['Author']}")
             repoAuthor.setStyleSheet(styles.subtextStyle)
 
+            scrollableDesc = QScrollArea()
+            scrollableDesc.setFrameShape(QScrollArea.NoFrame)
+            scrollableDesc.setStyleSheet("padding: 0 10px 0 0;")
+            scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            # Will expand content inside scroll area to fill available space
+            scrollableDesc.setWidgetResizable(True)
             repoDesc = QLabel(f"{content['Description']}")
             repoDesc.setStyleSheet(styles.mediumTextStyle)
             repoDesc.setWordWrap(True)
+            scrollableDesc.setWidget(repoDesc)
 
             imageUrl = content["IconPath"]
             appImage = QImage()
@@ -63,12 +70,11 @@ class MainPage(Page):
             imageLabel = QLabel()
             pixMap = QPixmap.fromImage(appImage.scaledToHeight(75))
             imageLabel.setPixmap(pixMap)
-            imageLabel.setStyleSheet("border: 1px solid black;border-radius: 5px;")
 
             repoLayout.addWidget(imageLabel, 0, 0, 3, 1)
             repoLayout.addWidget(repoLabel, 0, 1)
             repoLayout.addWidget(repoAuthor, 1, 1)
-            repoLayout.addWidget(repoDesc, 3, 0, 1, 2)
+            repoLayout.addWidget(scrollableDesc, 3, 0, 1, 2)
         else:
             for i in reversed(range(repoLayout.count())):
                 repoLayout.itemAt(i).widget().deleteLater()
@@ -76,6 +82,8 @@ class MainPage(Page):
     def repoTextChanged(self):
         self.repoName = self.getPageWidget("repoInputBox").text()
         self.displayRepoInfo(self, hide=True)
+        self.resetVerifyButton("unverified")
+        self.getPageWidget("messageBox").setText("")
 
     def configure(self):
         self.layout = QGridLayout()
@@ -122,6 +130,12 @@ class MainPage(Page):
         button.clicked.connect(lambda: self.verifyRepo())
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 4, 1)
+
+        # Add message box (for error messages)
+        messageBox = self.addPageWidget("messageBox", QLabel())
+        messageBox.setStyleSheet(styles.errorTextStyle)
+        self.layout.addWidget(messageBox, 4, 0)
+
         self.setLayout(self.layout)
         self.show()
 
@@ -133,6 +147,8 @@ class MainPage(Page):
             if result["result"]:
                 self.resetVerifyButton("verified")
                 self.displayRepoInfo(result["content"])
+            else:
+                self.getPageWidget("messageBox").setText("Unsupported repository")
             self.getPageWidget("pbar").setState(False)
 
         self.task = AsyncTask(finish, lambda: fetchRepo(self.repoName))

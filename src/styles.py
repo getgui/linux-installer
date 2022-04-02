@@ -38,7 +38,6 @@ color: {secondaryColorLight};
 mediumTextStyle = normalTextStyle + f"""
 font-size: 16px;
 color: {textColorLight};
-margin: 0 10px 0 0;
 """
 
 inputTextStyle = """
@@ -51,4 +50,9 @@ installButtonStyle = buttonStyle + f"""
 background-color : {accentColorDark};
 border-color : {accentColorLight};
 color : {primaryColor};
+"""
+
+errorTextStyle = """
+font-size : 15px;
+color : red;
 """
