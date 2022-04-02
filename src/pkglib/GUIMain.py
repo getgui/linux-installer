@@ -27,6 +27,9 @@ class Window(object):
         self.pageStack.widget(self.pageInfo[pageName]).update(data)
         self.pageStack.setCurrentIndex(self.pageInfo[pageName])
 
+    def setWindowSize(self, width, height):
+        self.pageStack.resize(width, height)
+
     def setMinSize(self):
         self.pageStack.resize(640, 140)
 
