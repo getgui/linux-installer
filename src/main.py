@@ -21,12 +21,14 @@ from pkglib.AsyncTask import AsyncTask
 from helpers import fetchRepo, fetchImage
 from pkglib.GUIMain import Page, Window, MainWindow
 
+ROOT = os.getcwd()
+
 
 class VerifyState(enum.Enum):
     VERIFIED = 0
     UNVERIFIED = 1
 
-ROOT=os.getcwd()
+
 class MainPage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
@@ -39,16 +41,12 @@ class MainPage(Page):
             self.getPageWidget("verifyButton").setText("Install")
             self.getPageWidget("verifyButton").setStyleSheet(styles.installButtonStyle)
             self.getPageWidget("verifyButton").clicked.disconnect()
-            self.getPageWidget("verifyButton").clicked.connect(
-                lambda: self.installRepo()
-            )
+            self.getPageWidget("verifyButton").clicked.connect(self.installRepo)
         elif state == VerifyState.UNVERIFIED:
             self.getPageWidget("verifyButton").setText("Verify")
             self.getPageWidget("verifyButton").setStyleSheet(styles.buttonStyle)
             self.getPageWidget("verifyButton").clicked.disconnect()
-            self.getPageWidget("verifyButton").clicked.connect(
-                lambda: self.verifyRepo()
-            )
+            self.getPageWidget("verifyButton").clicked.connect(self.verifyRepo)
 
     def displayMessage(self, message=None):
         messageBox = self.getPageWidget("messageBox")
@@ -153,7 +151,7 @@ class MainPage(Page):
 
         # Add Verify button button
         button = self.addPageWidget("verifyButton", QPushButton("Verify"))
-        button.clicked.connect(lambda: self.verifyRepo())
+        button.clicked.connect(self.verifyRepo)
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 4, 1)
 
@@ -161,7 +159,7 @@ class MainPage(Page):
         messageContainer = QHBoxLayout()
         messageContainer.addWidget(self.addPageWidget("messageIcon", QLabel()))
         messageContainer.addWidget(self.addPageWidget("messageBox", QLabel()))
-        messageContainer.insertStretch(2,1)
+        messageContainer.insertStretch(2, 1)
         self.layout.addLayout(messageContainer, 4, 0)
 
         self.setLayout(self.layout)
@@ -169,7 +167,6 @@ class MainPage(Page):
 
     def verifyRepo(self):
         self.getPageWidget("pbar").setState(True)
-        print("Verifying")
 
         def finish(result):
             if result["result"]:
@@ -188,7 +185,7 @@ class MainPage(Page):
 
 if __name__ == "__main__":
     app = MainWindow("Linux Installer", sys.argv)
-    print( QFontDatabase.addApplicationFont(ROOT + "/src/assets/codicon.ttf") )
+    QFontDatabase.addApplicationFont(ROOT + "/src/assets/codicon.ttf")
     app.addPage(MainPage("home", app))
     app.show()
     # Create and show the form
