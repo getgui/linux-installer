@@ -13,6 +13,7 @@ textColor = "#212121"
 textColorLight = "#757575"
 textColorDark = "#ffffff"
 warningColorLight = "#ffb300"
+warningColorDark = "#a62c00"
 
 buttonStyle = f"""
 font-size: 15px;
@@ -30,7 +31,7 @@ margin: 10px 0 0 0;
 normalTextStyle = f"""
 font-size: 18px;
 padding: 10px 0 0 0;
-color: {primaryColorDark};
+color: {secondaryColorLight};
 """
 subtextStyle = normalTextStyle + f"""
 font-size: 14px;
@@ -55,11 +56,11 @@ color : {primaryColor};
 
 errorTextStyle = f"""
 font-size : 15px;
-color : {warningColorLight};
+color : {warningColorDark};
 """
 errorIconStyle = f"""
 font-size : 25px;
 font-family: codicon;
-color : {warningColorLight};
+color : {warningColorDark};
 margin-left: 5px;
 """

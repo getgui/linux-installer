@@ -1,9 +1,9 @@
 #!../env/bin/python3
 import sys
 import os
-import yaml
 import styles
 from pkglib.GGProgressBar import ProgressBarIndeterminate
+from pkglib.Response import Response
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -14,12 +14,13 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QHBoxLayout,
 )
-from PySide6.QtGui import QImage, QPixmap, QFontDatabase
+from PySide6.QtGui import QPixmap, QFontDatabase
 
 import enum
 from pkglib.AsyncTask import AsyncTask
-from helpers import fetchRepo, fetchImage
 from pkglib.GUIMain import Page, Window, MainWindow
+from helpers import buildLicenseUrl, fetchRepo, fetchContent
+from Repository import Repo
 
 ROOT = os.getcwd()
 
@@ -33,6 +34,7 @@ class MainPage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
         self.repoName = ""
+        self.repoInfo = None
         self.configure()
 
     def resetVerifyButton(self, state: VerifyState):
@@ -64,11 +66,12 @@ class MainPage(Page):
         repoLayout = self.getPageWidget("repoInfoContainer")
         if not hide:
             assert data
-            content = yaml.safe_load(data)
-            repoLabel = QLabel(f"{content['AppName']}")
+            self.repoInfo = Repo()
+            self.repoInfo.loadRepo(self.repoName, data)
+            repoLabel = QLabel(self.repoInfo.appName)
             repoLabel.setStyleSheet(styles.normalTextStyle)
 
-            repoAuthor = QLabel(f"{content['Author']}")
+            repoAuthor = QLabel(self.repoInfo.author)
             repoAuthor.setStyleSheet(styles.subtextStyle)
 
             scrollableDesc = QScrollArea()
@@ -77,22 +80,13 @@ class MainPage(Page):
             scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
             # Will expand content inside scroll area to fill available space
             scrollableDesc.setWidgetResizable(True)
-            repoDesc = QLabel(f"{content['Description']}")
+            repoDesc = QLabel(self.repoInfo.repoDescription)
             repoDesc.setStyleSheet(styles.mediumTextStyle)
             repoDesc.setWordWrap(True)
             scrollableDesc.setWidget(repoDesc)
 
-            imageUrl = content["IconPath"]
-            appImage = QImage()
-            result, remoteImage = fetchImage(self.repoName, imageUrl)
-            if result:
-                # TODO: make remote image load an async task, default octocat
-                appImage.loadFromData(remoteImage)
-            else:
-                appImage.load("./src/assets/octocat.png")
-
             imageLabel = QLabel()
-            pixMap = QPixmap.fromImage(appImage.scaledToHeight(75))
+            pixMap = QPixmap.fromImage(self.repoInfo.repoImage.scaledToHeight(75))
             imageLabel.setPixmap(pixMap)
 
             repoLayout.addWidget(imageLabel, 0, 0, 3, 1)
@@ -173,20 +167,93 @@ class MainPage(Page):
                 self.resetVerifyButton(VerifyState.VERIFIED)
                 self.displayRepoInfo(result["content"])
             else:
-                self.displayMessage(f"Unsupported Repository {self.repoName}")
+                self.displayMessage(f"Unsupported Repository <b>{self.repoName}</b>")
             self.getPageWidget("pbar").setState(False)
 
         self.task = AsyncTask(finish, lambda: fetchRepo(self.repoName))
 
     def installRepo(self):
+        # fetch LICENSE and set the license content in repo
+        def setLicenseContent(result: Response):
+            if result.success:
+                self.repoInfo.license = result.content.decode("UTF-8")
+            self.getPageWidget("pbar").setState(False)
+            self.parentWindow.gotoPage("license", self.repoInfo)
+
         self.getPageWidget("pbar").setState(True)
-        self.getPageWidget("verifyButton").setText("Installing...")
+        licenseUrl = buildLicenseUrl(self.repoName)
+        self.task = AsyncTask(setLicenseContent, lambda: fetchContent(licenseUrl))
+
+
+class LicensePage(Page):
+    def __init__(self, name: str, parent: Window, data=None):
+        Page.__init__(self, name, parent, data)
+        self.repoName = ""
+        self.configure()
+
+    def update(self, data: Repo = None):
+        if data:
+            repoLabel = self.getPageWidget("repoLabel")
+            repoLabel.setText(data.appName)
+            licenseLabel = self.getPageWidget("licenseLabel")
+            licenseLabel.setText(data.license.replace(r"\n", "<br>"))
+            # self.parentWindow.setWindowSize(640, 240)
+            licenseLabel.setMinimumHeight(240)
+
+    def configure(self):
+        self.layout = QGridLayout()
+        self.layout.cellRect(5, 3)
+        self.layout.setRowStretch(0, 0)
+        self.layout.setRowStretch(3, 1)
+        self.layout.setColumnStretch(0, 1)
+        self.layout.setColumnStretch(1, 0)
+        self.layout.setColumnStretch(2, 0)
+
+        # Add title text
+        titleLabel = QLabel("License Agreement")
+        titleLabel.setStyleSheet(styles.titleTextStyle)
+        self.layout.addWidget(titleLabel, 0, 0)
+
+        # Repo Name
+        repoLabel = self.addPageWidget("repoLabel", QLabel())
+        repoLabel.setStyleSheet(styles.normalTextStyle)
+        self.layout.addWidget(repoLabel, 1, 0)
+
+        # license container
+        scrollableDesc = QScrollArea()
+        scrollableDesc.setFrameShape(QScrollArea.NoFrame)
+        scrollableDesc.setStyleSheet("padding: 10px 10px 0 0;")
+        scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Will expand content inside scroll area to fill available space
+        scrollableDesc.setWidgetResizable(True)
+        licenseText = self.addPageWidget("licenseLabel", QLabel())
+        licenseText.setStyleSheet(styles.mediumTextStyle)
+        licenseText.setWordWrap(True)
+        scrollableDesc.setWidget(licenseText)
+        self.layout.addWidget(scrollableDesc, 3, 0, 1, 3)
+
+        # Add Verify button button
+        button = self.addPageWidget("acceptButton", QPushButton("Accept && &Continue"))
+        button.clicked.connect(lambda: print("continue"))
+        button.setStyleSheet(styles.installButtonStyle)
+        self.layout.addWidget(button, 4, 2)
+
+        # Go back button
+        button = self.addPageWidget("rejectButton", QPushButton("Go &Back"))
+        button.clicked.connect(lambda: self.parentWindow.gotoPage("home"))
+        button.setStyleSheet(styles.buttonStyle)
+        self.layout.addWidget(button, 4, 1)
+
+        # show layout
+        self.setLayout(self.layout)
+        self.show()
 
 
 if __name__ == "__main__":
     app = MainWindow("Linux Installer", sys.argv)
     QFontDatabase.addApplicationFont(ROOT + "/src/assets/codicon.ttf")
     app.addPage(MainPage("home", app))
+    app.addPage(LicensePage("license", app))
     app.show()
     # Create and show the form
     app.run()
