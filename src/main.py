@@ -188,17 +188,16 @@ class MainPage(Page):
 class LicensePage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
-        self.repoName = ""
         self.configure()
+        self.repoInfo: Repo = None
 
     def update(self, data: Repo = None):
         if data:
+            self.repoInfo = data
             repoLabel = self.getPageWidget("repoLabel")
             repoLabel.setText(data.appName)
             licenseLabel = self.getPageWidget("licenseLabel")
             licenseLabel.setText(data.license.replace(r"\n", "<br>"))
-            # self.parentWindow.setWindowSize(640, 240)
-            licenseLabel.setMinimumHeight(240)
 
     def configure(self):
         self.layout = QGridLayout()
@@ -234,7 +233,9 @@ class LicensePage(Page):
 
         # Add Verify button button
         button = self.addPageWidget("acceptButton", QPushButton("Accept && &Continue"))
-        button.clicked.connect(lambda: print("continue"))
+        button.clicked.connect(
+            lambda: self.parentWindow.gotoPage("install", self.repoInfo)
+        )
         button.setStyleSheet(styles.installButtonStyle)
         self.layout.addWidget(button, 4, 2)
 
@@ -249,11 +250,77 @@ class LicensePage(Page):
         self.show()
 
 
+class InstallPage(Page):
+    def __init__(self, name: str, parent: Window, data=None):
+        super().__init__(name, parent, data)
+        self.configure()
+        self.repoInfo: Repo = None
+
+    def update(self, data: Repo = None):
+        if data:
+            self.repoInfo = data
+            titleLabel = self.getPageWidget("titleLabel")
+            titleLabel.setText(f"Installing <b>{self.repoInfo.appName}</b>")
+
+    def configure(self):
+        self.layout = QGridLayout()
+        self.layout.cellRect(5, 3)
+        self.layout.setRowStretch(0, 0)
+        self.layout.setRowStretch(3, 1)
+        self.layout.setColumnStretch(0, 1)
+        self.layout.setColumnStretch(1, 0)
+        self.layout.setColumnStretch(2, 0)
+
+        # Add title text
+        titleLabel = self.addPageWidget("titleLabel", QLabel())
+        titleLabel.setStyleSheet(styles.titleTextStyle)
+        self.layout.addWidget(titleLabel, 0, 0)
+
+        # Repo Name
+        repoLabel = self.addPageWidget("logLabel", QLabel())
+        repoLabel.setStyleSheet(styles.normalTextStyle)
+        repoLabel.setText("[1/34] Updating environment variables.")
+        self.layout.addWidget(repoLabel, 1, 0)
+
+        # script logs container - shows output of the running script
+        scrollableDesc = QScrollArea()
+        scrollableDesc.setFrameShape(QScrollArea.NoFrame)
+        scrollableDesc.setStyleSheet("padding: 10px 10px 0 0;")
+        scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Will expand content inside scroll area to fill available space
+        scrollableDesc.setWidgetResizable(True)
+        scriptLogLabel = self.addPageWidget("scriptOutputLabel", QLabel())
+        scriptLogLabel.setStyleSheet(styles.mediumTextStyle)
+        scriptLogLabel.setWordWrap(True)
+        scrollableDesc.setWidget(scriptLogLabel)
+        self.layout.addWidget(scrollableDesc, 3, 0, 1, 3)
+
+        # Just a test function that adds logs and scrolls to bottom
+        def test():
+            scriptLogLabel.setText(
+                scriptLogLabel.text() + f"Doing something not needed<br> "
+            )
+            verticalBar = scrollableDesc.verticalScrollBar()
+            print(verticalBar.maximum())
+            verticalBar.setValue(verticalBar.maximum())
+
+        # Cancel install button
+        button = self.addPageWidget("cancelButton", QPushButton("&Cancel"))
+        button.clicked.connect(test)
+        button.setStyleSheet(styles.buttonStyle)
+        self.layout.addWidget(button, 4, 2)
+
+        # show layout
+        self.setLayout(self.layout)
+        self.show()
+
+
 if __name__ == "__main__":
     app = MainWindow("Linux Installer", sys.argv)
     QFontDatabase.addApplicationFont(ROOT + "/src/assets/codicon.ttf")
     app.addPage(MainPage("home", app))
     app.addPage(LicensePage("license", app))
+    app.addPage(InstallPage("install", app))
     app.show()
     # Create and show the form
     app.run()
