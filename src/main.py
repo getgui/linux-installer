@@ -1,6 +1,7 @@
 #!../env/bin/python3
 import sys
 import os
+from pkglib.ScriptRunner import Runner
 import styles
 from pkglib.GGProgressBar import ProgressBarIndeterminate
 from pkglib.Response import Response
@@ -19,7 +20,7 @@ from PySide6.QtGui import QPixmap, QFontDatabase
 import enum
 from pkglib.AsyncTask import AsyncTask
 from pkglib.GUIMain import Page, Window, MainWindow
-from helpers import buildLicenseUrl, fetchRepo, fetchContent
+from helpers import buildLicenseUrl, buildUrl, fetchRepo, fetchContent
 from Repository import Repo
 
 ROOT = os.getcwd()
@@ -255,12 +256,21 @@ class InstallPage(Page):
         super().__init__(name, parent, data)
         self.configure()
         self.repoInfo: Repo = None
+        self.scriptRunner : Runner
 
     def update(self, data: Repo = None):
         if data:
             self.repoInfo = data
             titleLabel = self.getPageWidget("titleLabel")
             titleLabel.setText(f"Installing <b>{self.repoInfo.appName}</b>")
+            self.install()
+
+    def install(self):
+        installScriptContent = fetchContent(
+            buildUrl(self.repoInfo.repoName, self.repoInfo.installScriptPath)
+        )
+        self.scriptRunner = Runner(installScriptContent)
+        # Run here
 
     def configure(self):
         self.layout = QGridLayout()
@@ -298,7 +308,7 @@ class InstallPage(Page):
         # Just a test function that adds logs and scrolls to bottom
         def test():
             scriptLogLabel.setText(
-                scriptLogLabel.text() + f"Doing something not needed<br> "
+                scriptLogLabel.text() + "Doing something not needed<br>"
             )
             verticalBar = scrollableDesc.verticalScrollBar()
             print(verticalBar.maximum())

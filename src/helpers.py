@@ -23,6 +23,8 @@ def fetchContent(url) -> Response:
 
 # Miscellaneous Helper Functions
 
+def buildUrl(repo, relPath):
+    return f"https://raw.githubusercontent.com/{str(repo)}/master/{relPath}"
 
 def buildLicenseUrl(repo):
     return f"https://raw.githubusercontent.com/{str(repo)}/master/LICENSE"

@@ -14,6 +14,7 @@ class Repo:
     repoDescription: str
     repoImage: QImage
     license: str
+    installScriptPath: str
 
     def __init__(self) -> None:
         pass
@@ -25,6 +26,7 @@ class Repo:
         self.author = content["Author"]
         self.repoDescription = content["Description"]
         self.repoImageUrl = content["IconPath"]
+        self.installScriptPath = content["InstallScript"]
         self.repoImage = QImage()
         result, remoteImage = fetchImage(self.repoName, self.repoImageUrl)
         if result:
