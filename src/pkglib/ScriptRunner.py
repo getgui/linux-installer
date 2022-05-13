@@ -1,19 +1,20 @@
 import subprocess
-import tempfile
 
 
 class Runner:
-    def __init__(self, scriptContent: str) -> None:
+    def __init__(self, scriptContent: bytes) -> None:
         self.scriptPath = ""
         self.process = None
+        self.stdout = None
+        self.stderr = None
         # create the script
-        with tempfile.NamedTemporaryFile() as f:
+        with open("/tmp/installer.sh", "w") as f:
             self.scriptPath = f.name
-            f.write(scriptContent)
+            f.write(scriptContent.decode("UTF-8"))
 
     def start(self):
         # run script in a subprocess
-        self.process = subprocess.run(
-            ["bash", self.scriptPath], check=True, capture_output=True
+        self.process = subprocess.Popen(
+            ["bash", self.scriptPath],
+            stdout=subprocess.PIPE,
         )
-        

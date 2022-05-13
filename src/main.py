@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QFontDatabase
 
 import enum
-from pkglib.AsyncTask import AsyncTask
+from pkglib.AsyncTask import AsyncTask, AsyncTaskRepeat
 from pkglib.GUIMain import Page, Window, MainWindow
 from helpers import buildLicenseUrl, buildUrl, fetchRepo, fetchContent
 from Repository import Repo
@@ -34,7 +34,7 @@ class VerifyState(enum.Enum):
 class MainPage(Page):
     def __init__(self, name: str, parent: Window, data=None):
         Page.__init__(self, name, parent, data)
-        self.repoName = ""
+        self.repoName = "getgui/download-ram"
         self.repoInfo = None
         self.configure()
 
@@ -256,7 +256,8 @@ class InstallPage(Page):
         super().__init__(name, parent, data)
         self.configure()
         self.repoInfo: Repo = None
-        self.scriptRunner : Runner
+        self.scriptRunner: Runner
+        self.installerTask = None
 
     def update(self, data: Repo = None):
         if data:
@@ -265,12 +266,38 @@ class InstallPage(Page):
             titleLabel.setText(f"Installing <b>{self.repoInfo.appName}</b>")
             self.install()
 
+    def installerRun(self):
+        self.scriptRunner.start()
+
+        def processLog(text):
+            logLabel = self.getPageWidget("logLabel")
+            if text.startswith(">"):
+                logLabel.setText(text.lstrip(">"))
+            else:
+                scriptLogLabel = self.getPageWidget("scriptOutputLabel")
+                scriptLogLabel.setText(scriptLogLabel.text() + text)
+                scrollableDesc = self.getPageWidget("logScroller")
+                verticalBar = scrollableDesc.verticalScrollBar()
+                verticalBar.setValue(verticalBar.maximum())
+
+        def asyncTask():
+            line = self.scriptRunner.process.stdout.readline().decode("UTF-8")
+            if line:
+                return line
+
+        # While true the async task runs
+        def endCondition():
+            return self.scriptRunner.process.poll() is None
+
+        self.installerTask = AsyncTaskRepeat(processLog, asyncTask, endCondition)
+
     def install(self):
-        installScriptContent = fetchContent(
+        response = fetchContent(
             buildUrl(self.repoInfo.repoName, self.repoInfo.installScriptPath)
         )
-        self.scriptRunner = Runner(installScriptContent)
-        # Run here
+        if response.success:
+            self.scriptRunner = Runner(response.content)
+            self.installerRun()
 
     def configure(self):
         self.layout = QGridLayout()
@@ -293,7 +320,7 @@ class InstallPage(Page):
         self.layout.addWidget(repoLabel, 1, 0)
 
         # script logs container - shows output of the running script
-        scrollableDesc = QScrollArea()
+        scrollableDesc = self.addPageWidget("logScroller", QScrollArea())
         scrollableDesc.setFrameShape(QScrollArea.NoFrame)
         scrollableDesc.setStyleSheet("padding: 10px 10px 0 0;")
         scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -301,6 +328,7 @@ class InstallPage(Page):
         scrollableDesc.setWidgetResizable(True)
         scriptLogLabel = self.addPageWidget("scriptOutputLabel", QLabel())
         scriptLogLabel.setStyleSheet(styles.mediumTextStyle)
+        scriptLogLabel.setAlignment(Qt.AlignTop)
         scriptLogLabel.setWordWrap(True)
         scrollableDesc.setWidget(scriptLogLabel)
         self.layout.addWidget(scrollableDesc, 3, 0, 1, 3)
@@ -308,10 +336,9 @@ class InstallPage(Page):
         # Just a test function that adds logs and scrolls to bottom
         def test():
             scriptLogLabel.setText(
-                scriptLogLabel.text() + "Doing something not needed<br>"
+                scriptLogLabel.text() + "Doing something not needed\n"
             )
             verticalBar = scrollableDesc.verticalScrollBar()
-            print(verticalBar.maximum())
             verticalBar.setValue(verticalBar.maximum())
 
         # Cancel install button
