@@ -266,6 +266,13 @@ class InstallPage(Page):
             titleLabel.setText(f"Installing <b>{self.repoInfo.appName}</b>")
             self.install()
 
+    def updateLogLabelAndScroll(self, text: str):
+        scriptLogLabel = self.getPageWidget("scriptOutputLabel")
+        scriptLogLabel.setText(scriptLogLabel.text() + text)
+        scrollableDesc = self.getPageWidget("logScroller")
+        verticalBar = scrollableDesc.verticalScrollBar()
+        verticalBar.setValue(verticalBar.maximum())
+
     def installerRun(self):
         self.scriptRunner.start()
 
@@ -274,11 +281,7 @@ class InstallPage(Page):
             if text.startswith(">"):
                 logLabel.setText(text.lstrip(">"))
             else:
-                scriptLogLabel = self.getPageWidget("scriptOutputLabel")
-                scriptLogLabel.setText(scriptLogLabel.text() + text)
-                scrollableDesc = self.getPageWidget("logScroller")
-                verticalBar = scrollableDesc.verticalScrollBar()
-                verticalBar.setValue(verticalBar.maximum())
+                self.updateLogLabelAndScroll(text)
 
         def asyncTask():
             line = self.scriptRunner.process.stdout.readline().decode("UTF-8")
@@ -316,34 +319,32 @@ class InstallPage(Page):
         # Repo Name
         repoLabel = self.addPageWidget("logLabel", QLabel())
         repoLabel.setStyleSheet(styles.normalTextStyle)
-        repoLabel.setText("[1/34] Updating environment variables.")
+        repoLabel.setText("Fetching installer script...")
         self.layout.addWidget(repoLabel, 1, 0)
 
         # script logs container - shows output of the running script
         scrollableDesc = self.addPageWidget("logScroller", QScrollArea())
         scrollableDesc.setFrameShape(QScrollArea.NoFrame)
-        scrollableDesc.setStyleSheet("padding: 10px 10px 0 0;")
+        scrollableDesc.setStyleSheet("padding: 10px 0 0 0; margin: 0;")
         scrollableDesc.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         # Will expand content inside scroll area to fill available space
         scrollableDesc.setWidgetResizable(True)
         scriptLogLabel = self.addPageWidget("scriptOutputLabel", QLabel())
-        scriptLogLabel.setStyleSheet(styles.mediumTextStyle)
+        scriptLogLabel.setStyleSheet(styles.ttTextStyle)
         scriptLogLabel.setAlignment(Qt.AlignTop)
         scriptLogLabel.setWordWrap(True)
         scrollableDesc.setWidget(scriptLogLabel)
         self.layout.addWidget(scrollableDesc, 3, 0, 1, 3)
 
         # Just a test function that adds logs and scrolls to bottom
-        def test():
-            scriptLogLabel.setText(
-                scriptLogLabel.text() + "Doing something not needed\n"
-            )
-            verticalBar = scrollableDesc.verticalScrollBar()
-            verticalBar.setValue(verticalBar.maximum())
+        def cancelInstall():
+            self.scriptRunner.process.kill()
+            self.installerTask.quit()
+            self.updateLogLabelAndScroll("\nInstallation cancelled\n\n")
 
         # Cancel install button
         button = self.addPageWidget("cancelButton", QPushButton("&Cancel"))
-        button.clicked.connect(test)
+        button.clicked.connect(cancelInstall)
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 4, 2)
 

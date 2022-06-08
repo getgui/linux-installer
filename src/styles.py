@@ -41,7 +41,10 @@ mediumTextStyle = normalTextStyle + f"""
 font-size: 16px;
 color: {textColorLight};
 """
-
+ttTextStyle = mediumTextStyle + """
+font-family: monospace;
+font-size: 14px;
+"""
 inputTextStyle = """
 font-size : 18px;
 font-family : "Fira Code", Monaco, monospace;
