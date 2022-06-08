@@ -170,8 +170,10 @@ class MainPage(Page):
             else:
                 self.displayMessage(f"Unsupported Repository <b>{self.repoName}</b>")
             self.getPageWidget("pbar").setState(False)
+            self.deRegisterAsyncTask(self.task)
 
         self.task = AsyncTask(finish, lambda: fetchRepo(self.repoName))
+        self.registerAsyncTask(self.task)
 
     def installRepo(self):
         # fetch LICENSE and set the license content in repo
@@ -180,11 +182,12 @@ class MainPage(Page):
                 self.repoInfo.license = result.content.decode("UTF-8")
             self.getPageWidget("pbar").setState(False)
             self.parentWindow.gotoPage("license", self.repoInfo)
+            self.deRegisterAsyncTask(self.task)
 
         self.getPageWidget("pbar").setState(True)
         licenseUrl = buildLicenseUrl(self.repoName)
         self.task = AsyncTask(setLicenseContent, lambda: fetchContent(licenseUrl))
-
+        self.registerAsyncTask(self.task)
 
 class LicensePage(Page):
     def __init__(self, name: str, parent: Window, data=None):
@@ -293,6 +296,8 @@ class InstallPage(Page):
             return self.scriptRunner.process.poll() is None
 
         self.installerTask = AsyncTaskRepeat(processLog, asyncTask, endCondition)
+        # register async task to cleanup at exit
+        self.registerAsyncTask(self.installerTask)
 
     def install(self):
         response = fetchContent(

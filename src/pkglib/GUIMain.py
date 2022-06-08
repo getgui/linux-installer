@@ -4,7 +4,11 @@ from PySide6.QtWidgets import (
     QApplication,
     QWidget,
 )
+from PySide6.QtCore import QEvent
 import sys
+
+from pkglib.AsyncTask import AsyncTaskBase
+
 # Base class from which all other windows inherit
 # A window has a title and a stacked widget.
 # It can add pages to the page stack and switch between them.
@@ -16,6 +20,14 @@ class Window(object):
         self.pageStackSize = 0
         self.pageInfo = {}
         self.setMinSize()
+        self.pageStack.closeEvent = self._cleanupAsyncTasks
+
+    def _cleanupAsyncTasks(self, event: QEvent):
+        for index in range(self.pageStackSize):
+            page = self.pageStack.widget(index)
+            if isinstance(page, Page):
+                page.cleanupAsyncTasks()
+        event.accept()
 
     def addPage(self, page):
         self.pageStack.addWidget(page)
@@ -63,6 +75,7 @@ class Page(QWidget):
         self.name = name
         self.layout = None
         self.pageWidgets = {}
+        self.asyncTasks: AsyncTaskBase = []
 
     def configure(self):
         # configure page specific stuff i.e. buttons, labels, etc.
@@ -79,6 +92,17 @@ class Page(QWidget):
 
     def getPageWidget(self, name):
         return self.pageWidgets[name]
+
+    def cleanupAsyncTasks(self):
+        for task in self.asyncTasks:
+            task.quit()
+
+    def registerAsyncTask(self, task: AsyncTaskBase):
+        self.asyncTasks.append(task)
+        return task
+
+    def deRegisterAsyncTask(self, task: AsyncTaskBase):
+        self.asyncTasks.remove(task)
 
     def getName(self):
         return self.name

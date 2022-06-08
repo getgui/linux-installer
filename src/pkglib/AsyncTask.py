@@ -28,9 +28,13 @@ class Worker(QObject):
         self.taskCompleteSignal.emit(None)
 
 
+class AsyncTaskBase(object):
+    def quit(self):
+        pass
+
 # AsyncTask runs a long running task and after completion it
 # returns with the result and finishTask runs in the main UI thread.
-class AsyncTask(object):
+class AsyncTask(AsyncTaskBase):
     def __init__(self, finishTask, asyncTaskCallback):
         super(AsyncTask, self).__init__()
         self.worker_thread = QThread()
@@ -41,6 +45,10 @@ class AsyncTask(object):
         self.worker.moveToThread(self.worker_thread)
         self.worker_thread.start()
 
+    def quit(self):
+        self.worker_thread.quit()
+        self.worker_thread.wait()
+
     def taskDone(self, result):
         try:
             if result:
@@ -48,13 +56,12 @@ class AsyncTask(object):
         except Exception as e:
             raise e
         finally:
-            self.worker_thread.quit()
-            self.worker_thread.wait()
+            self.quit()
 
 
 # AsyncTask runs a long running task and after completion it
 # returns with the result and finishTask runs in the main UI thread.
-class AsyncTaskRepeat(object):
+class AsyncTaskRepeat(AsyncTaskBase):
     def __init__(
         self,
         handleResult,
