@@ -1,10 +1,12 @@
 #!../env/bin/python3
 import sys
 import os
-from pkglib.ScriptRunner import Runner
 import styles
+from pkglib.ScriptRunner import Runner
 from pkglib.GGProgressBar import ProgressBarIndeterminate
 from pkglib.Response import Response
+from pkglib.AsyncTask import AsyncTask, AsyncTaskRepeat
+from pkglib.GUIMain import Page, Window, MainWindow
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -18,8 +20,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QFontDatabase
 
 import enum
-from pkglib.AsyncTask import AsyncTask, AsyncTaskRepeat
-from pkglib.GUIMain import Page, Window, MainWindow
 from helpers import buildLicenseUrl, buildUrl, fetchRepo, fetchContent
 from Repository import Repo
 
@@ -36,6 +36,7 @@ class MainPage(Page):
         Page.__init__(self, name, parent, data)
         self.repoName = "getgui/download-ram"
         self.repoInfo = None
+        self.task = None
         self.configure()
 
     def resetVerifyButton(self, state: VerifyState):
@@ -161,7 +162,10 @@ class MainPage(Page):
         self.show()
 
     def verifyRepo(self):
-        self.getPageWidget("pbar").setState(True)
+        pbar = self.getPageWidget("pbar")
+        if pbar.state:
+            return
+        pbar.setState(True)
 
         def finish(result):
             if result["result"]:
@@ -184,10 +188,14 @@ class MainPage(Page):
             self.parentWindow.gotoPage("license", self.repoInfo)
             self.deRegisterAsyncTask(self.task)
 
-        self.getPageWidget("pbar").setState(True)
+        pbar = self.getPageWidget("pbar")
+        if pbar.state:  # don't retrigger if already working on it
+            return
+        pbar.setState(True)
         licenseUrl = buildLicenseUrl(self.repoName)
         self.task = AsyncTask(setLicenseContent, lambda: fetchContent(licenseUrl))
         self.registerAsyncTask(self.task)
+
 
 class LicensePage(Page):
     def __init__(self, name: str, parent: Window, data=None):
@@ -276,6 +284,12 @@ class InstallPage(Page):
         verticalBar = scrollableDesc.verticalScrollBar()
         verticalBar.setValue(verticalBar.maximum())
 
+    def updateActionButton(self):
+        doneButton = self.getPageWidget("cancelOrDoneButton")
+        doneButton.clicked.disconnect()
+        doneButton.setText("Done")
+        doneButton.clicked.connect(self.parentWindow.close)
+
     def installerRun(self):
         self.scriptRunner.start()
 
@@ -295,7 +309,9 @@ class InstallPage(Page):
         def endCondition():
             return self.scriptRunner.process.poll() is None
 
-        self.installerTask = AsyncTaskRepeat(processLog, asyncTask, endCondition)
+        self.installerTask = AsyncTaskRepeat(
+            processLog, asyncTask, endCondition, self.updateActionButton
+        )
         # register async task to cleanup at exit
         self.registerAsyncTask(self.installerTask)
 
@@ -348,7 +364,7 @@ class InstallPage(Page):
             self.updateLogLabelAndScroll("\nInstallation cancelled\n\n")
 
         # Cancel install button
-        button = self.addPageWidget("cancelButton", QPushButton("&Cancel"))
+        button = self.addPageWidget("cancelOrDoneButton", QPushButton("&Cancel"))
         button.clicked.connect(cancelInstall)
         button.setStyleSheet(styles.buttonStyle)
         self.layout.addWidget(button, 4, 2)
