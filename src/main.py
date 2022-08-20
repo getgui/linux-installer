@@ -287,7 +287,7 @@ class InstallPage(Page):
     def updateActionButton(self):
         doneButton = self.getPageWidget("cancelOrDoneButton")
         doneButton.clicked.disconnect()
-        doneButton.setText("Done")
+        doneButton.setText("Close")
         doneButton.clicked.connect(self.parentWindow.close)
 
     def installerRun(self):
